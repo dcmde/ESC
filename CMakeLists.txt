@@ -10,7 +10,7 @@ SET(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 set(CMAKE_C_COMPILER "arm-none-eabi-gcc")
 set(CMAKE_OBJCOPY "arm-none-eabi-objcopy")
 
-project(template C ASM)
+project(ESC C ASM)
 
 # Header files directory
 include_directories(
@@ -24,6 +24,7 @@ include_directories(
 # Source files directory
 SET(USER_SOURCES
         src/main.c
+        src/stm32f10x_it.c
         )
 
 SET(SPL_SOURCES
@@ -63,13 +64,7 @@ SET(COMMON_FLAGS "-g -O0 -Wall -ffunction-sections -DSTM32F103x6 -DUSE_STDPERIPH
 set(CMAKE_C_FLAGS "${COMMON_FLAGS} -std=gnu99")
 
 # Search for the SPL and create linker flag.
-if (IS_DIRECTORY lib/STM32F10x_StdPeriph_Lib_V3.3.0)
-    SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--no-wchar-size-warning,--gc-sections,-M=binary.map,-T./lib/STM32F10x_StdPeriph_Lib_V3.3.0/Project/STM32F10x_StdPeriph_Template/TrueSTUDIO/STM3210B-EVAL/stm32_flash.ld")
-elseif (IS_DIRECTORY ../lib/STM32F10x_StdPeriph_Lib_V3.3.0)
-    SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--no-wchar-size-warning,--gc-sections,-M=binary.map,-T../lib/STM32F10x_StdPeriph_Lib_V3.3.0/Project/STM32F10x_StdPeriph_Template/TrueSTUDIO/STM3210B-EVAL/stm32_flash.ld")
-else ()
-    message("Cannot find STM32F10x_StdPeriph_Lib_V3.3.0 folder")
-endif ()
+SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--no-wchar-size-warning,--gc-sections,-M=binary.map,-T../lib/STM32F10x_StdPeriph_Lib_V3.3.0/Project/STM32F10x_StdPeriph_Template/TrueSTUDIO/STM3210B-EVAL/stm32_flash.ld")
 
 # Libraries
 add_library(SPL ${SPL_SOURCES})
@@ -77,7 +72,7 @@ add_library(CMSIS ${CMSIS_SOURCES})
 
 # Executable
 add_executable(${PROJECT_NAME}.elf ${USER_SOURCES})
-target_link_libraries(${PROJECT_NAME}.elf SPL CMSIS)
+target_link_libraries(${PROJECT_NAME}.elf SPL CMSIS m)
 
 # Create build directory.
 file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/bin/build/)
