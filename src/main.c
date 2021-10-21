@@ -45,7 +45,7 @@ int main() {
     nvicInitTypeDef.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&nvicInitTypeDef);
 
-    timInitStruct.TIM_Prescaler = 7200;
+    timInitStruct.TIM_Prescaler = 1;
     timInitStruct.TIM_Period = 1000;
     timInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
     timInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;

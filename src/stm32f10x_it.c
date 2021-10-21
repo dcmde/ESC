@@ -1,3 +1,4 @@
+#include <math.h>
 #include "stm32f10x.h"
 #include "stm32f10x_it.h"
 
@@ -100,7 +101,20 @@ void SysTick_Handler(void) {
 /******************************************************************************/
 
 volatile uint8_t state = 0;
+volatile float theta = 0;
 
+void TIM2_IRQHandler(void) {
+    if (TIM_GetITStatus(TIM2, TIM_IT_Update)) {
+        TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+        theta += 0.05;
+        GPIOC->ODR ^= 0x2000;
+        double A = 0.09;
+        TIM1->CCR1 = (uint16_t)500*(1 + A*sinf(theta));
+        TIM1->CCR2 = (uint16_t)500*(1 + A*sinf(theta + 2*3.1416/3.0));
+        TIM1->CCR3 = (uint16_t)500*(1 + A*sinf(theta - 2*3.1416/3.0));
+    }
+}
+/*
 void TIM2_IRQHandler(void) {
     int16_t alpha_1, alpha_2, alpha_3;
 
@@ -172,4 +186,4 @@ void TIM2_IRQHandler(void) {
         }
     }
 }
-
+*/
