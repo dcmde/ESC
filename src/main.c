@@ -2,13 +2,22 @@
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_gpio.h>
 #include <stm32f10x_tim.h>
+#include <stm32f10x_usart.h>
+#include <stm32f10x_dma.h>
 #include "misc.h"
 
+extern volatile int32_t encoder_num_turn;
+
 int main() {
+    uint8_t data[3] = {'a', 'n', '\n'};
     GPIO_InitTypeDef gpioInitTypeDef;
     TIM_TimeBaseInitTypeDef timInitStruct;
     TIM_BDTRInitTypeDef TIM_BDTRInitStructure;
     NVIC_InitTypeDef nvicInitTypeDef;
+    USART_InitTypeDef usartInitTypeDef;
+    DMA_InitTypeDef dmaInitTypeDef;
+
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1 |
                            RCC_APB2Periph_AFIO |
@@ -18,7 +27,8 @@ int main() {
                            ENABLE);
 
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 |
-                           RCC_APB1Periph_TIM4,
+                           RCC_APB1Periph_TIM4 |
+                           RCC_APB1Periph_USART2,
                            ENABLE);
 
     gpioInitTypeDef.GPIO_Mode = GPIO_Mode_Out_PP;
@@ -35,7 +45,7 @@ int main() {
 
     gpioInitTypeDef.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
     gpioInitTypeDef.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-    GPIO_Init(GPIOB,&gpioInitTypeDef);
+    GPIO_Init(GPIOB, &gpioInitTypeDef);
 
     timInitStruct.TIM_RepetitionCounter = 0;
     timInitStruct.TIM_Prescaler = 36;
@@ -68,7 +78,7 @@ int main() {
     NVIC_Init(&nvicInitTypeDef);
 
     TIM4->ARR = 1600;
-    TIM_EncoderInterfaceConfig(TIM4,TIM_EncoderMode_TI12,TIM_ICPolarity_Rising,TIM_ICPolarity_Falling);
+    TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12, TIM_ICPolarity_Rising, TIM_ICPolarity_Falling);
 
     TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
     TIM_Cmd(TIM4, ENABLE);
@@ -108,6 +118,39 @@ int main() {
 
     TIM_CtrlPWMOutputs(TIM1, ENABLE);
 
+    // Init UART
+    gpioInitTypeDef.GPIO_Mode = GPIO_Mode_AF_PP;
+    gpioInitTypeDef.GPIO_Pin = GPIO_Pin_2;
+    gpioInitTypeDef.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOA, &gpioInitTypeDef);
+
+    dmaInitTypeDef.DMA_BufferSize = 3;
+    dmaInitTypeDef.DMA_DIR = DMA_DIR_PeripheralDST;
+    dmaInitTypeDef.DMA_M2M = DMA_M2M_Disable;
+    dmaInitTypeDef.DMA_MemoryBaseAddr = (uint32_t) data;
+    dmaInitTypeDef.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+    dmaInitTypeDef.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    dmaInitTypeDef.DMA_Mode = DMA_Mode_Normal;
+    dmaInitTypeDef.DMA_PeripheralBaseAddr = (uint32_t) 0x40004404;
+    dmaInitTypeDef.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+    dmaInitTypeDef.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+    dmaInitTypeDef.DMA_Priority = DMA_Priority_Medium;
+    DMA_Init(DMA1_Channel7, &dmaInitTypeDef);
+    DMA_Cmd(DMA1_Channel7, ENABLE);
+
+    usartInitTypeDef.USART_WordLength = USART_WordLength_8b;
+    usartInitTypeDef.USART_StopBits = USART_StopBits_1;
+    usartInitTypeDef.USART_Parity = USART_Parity_No;
+    usartInitTypeDef.USART_Mode = USART_Mode_Tx;
+    usartInitTypeDef.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+    usartInitTypeDef.USART_BaudRate = 115200;
+    USART_Init(USART2, &usartInitTypeDef);
+    USART_DMACmd(USART2, USART_DMAReq_Tx, ENABLE);
+    USART_Cmd(USART2, ENABLE);
+
     while (1) {
+        DMA1_Channel7->CCR &= ~DMA_CCR7_EN;
+        DMA1_Channel7->CNDTR = 3;
+        DMA1_Channel7->CCR |= DMA_CCR7_EN;
     }
 }
