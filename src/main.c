@@ -45,13 +45,13 @@ int main() {
 
     TIM_TimeBaseInit(TIM1, &timInitStruct);
 
-    nvicInitTypeDef.NVIC_IRQChannelSubPriority = 0;
+    nvicInitTypeDef.NVIC_IRQChannelSubPriority = 6;
     nvicInitTypeDef.NVIC_IRQChannel = TIM2_IRQn;
-    nvicInitTypeDef.NVIC_IRQChannelPreemptionPriority = 2;
+    nvicInitTypeDef.NVIC_IRQChannelPreemptionPriority = 3;
     nvicInitTypeDef.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&nvicInitTypeDef);
 
-    timInitStruct.TIM_Prescaler = 1;
+    timInitStruct.TIM_Prescaler = 100;
     timInitStruct.TIM_Period = 1000;
     timInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
     timInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;
@@ -60,15 +60,17 @@ int main() {
     TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
 
     TIM_Cmd(TIM2, ENABLE);
-    /*
-    timInitStruct.TIM_Prescaler = 0;
-    timInitStruct.TIM_Period = 400;
-    timInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
-    timInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;
-    TIM_TimeBaseInit(TIM4, &timInitStruct);*/
 
-    TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12, TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
+    nvicInitTypeDef.NVIC_IRQChannelSubPriority = 0;
+    nvicInitTypeDef.NVIC_IRQChannel = TIM4_IRQn;
+    nvicInitTypeDef.NVIC_IRQChannelPreemptionPriority = 2;
+    nvicInitTypeDef.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&nvicInitTypeDef);
 
+    TIM4->ARR = 1600;
+    TIM_EncoderInterfaceConfig(TIM4,TIM_EncoderMode_TI12,TIM_ICPolarity_Rising,TIM_ICPolarity_Falling);
+
+    TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
     TIM_Cmd(TIM4, ENABLE);
 
     TIM_OCInitTypeDef ocInitTypeDef;
@@ -102,7 +104,7 @@ int main() {
 
     TIM_BDTRConfig(TIM1, &TIM_BDTRInitStructure);
 
-    TIM_Cmd(TIM1, ENABLE);
+    //TIM_Cmd(TIM1, ENABLE);
 
     TIM_CtrlPWMOutputs(TIM1, ENABLE);
 

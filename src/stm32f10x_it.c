@@ -109,11 +109,25 @@ void TIM2_IRQHandler(void) {
         theta += 0.05;
         GPIOC->ODR ^= 0x2000;
         double A = 0.09;
-        TIM1->CCR1 = (uint16_t)500*(1 + A*sinf(theta));
-        TIM1->CCR2 = (uint16_t)500*(1 + A*sinf(theta + 2*3.1416/3.0));
-        TIM1->CCR3 = (uint16_t)500*(1 + A*sinf(theta - 2*3.1416/3.0));
+        TIM1->CCR1 = (uint16_t) 500 * (1 + A * sinf(theta));
+        TIM1->CCR2 = (uint16_t) 500 * (1 + A * sinf(theta + 2 * 3.1416 / 3.0));
+        TIM1->CCR3 = (uint16_t) 500 * (1 + A * sinf(theta - 2 * 3.1416 / 3.0));
     }
 }
+
+volatile int32_t encoder_num_turn = 0;
+
+void TIM4_IRQHandler(void) {
+    if (TIM_GetITStatus(TIM4, TIM_IT_Update)) {
+        TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
+        if (TIM4->CR1 & TIM_CR1_DIR) {
+            ++encoder_num_turn;
+        } else {
+            --encoder_num_turn;
+        }
+    }
+}
+
 /*
 void TIM2_IRQHandler(void) {
     int16_t alpha_1, alpha_2, alpha_3;
