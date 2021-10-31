@@ -7,15 +7,19 @@
 #include "misc.h"
 
 extern volatile int32_t encoder_num_turn;
+uint8_t data[3] = {'a', 'n', '\n'};
+
+void Gpio_init();
+
+void UART_init();
+
+void PWM_Bridge_init();
+
+void Encoder_init();
+
+void Time_init();
 
 int main() {
-    uint8_t data[3] = {'a', 'n', '\n'};
-    GPIO_InitTypeDef gpioInitTypeDef;
-    TIM_TimeBaseInitTypeDef timInitStruct;
-    TIM_BDTRInitTypeDef TIM_BDTRInitStructure;
-    NVIC_InitTypeDef nvicInitTypeDef;
-    USART_InitTypeDef usartInitTypeDef;
-    DMA_InitTypeDef dmaInitTypeDef;
 
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
@@ -30,6 +34,27 @@ int main() {
                            RCC_APB1Periph_TIM4 |
                            RCC_APB1Periph_USART2,
                            ENABLE);
+
+    Gpio_init();
+
+    Encoder_init();
+
+    PWM_Bridge_init();
+
+    UART_init();
+
+    Time_init();
+
+    while (1) {
+        DMA1_Channel7->CCR &= ~DMA_CCR7_EN;
+        DMA1_Channel7->CNDTR = 3;
+        DMA1_Channel7->CCR |= DMA_CCR7_EN;
+        for (uint32_t i = 0; i < 0xFFF; ++i);
+    }
+}
+
+void Gpio_init() {
+    GPIO_InitTypeDef gpioInitTypeDef;
 
     gpioInitTypeDef.GPIO_Mode = GPIO_Mode_Out_PP;
     gpioInitTypeDef.GPIO_Pin = GPIO_Pin_13;
@@ -46,79 +71,13 @@ int main() {
     gpioInitTypeDef.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
     gpioInitTypeDef.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_Init(GPIOB, &gpioInitTypeDef);
+}
 
-    timInitStruct.TIM_RepetitionCounter = 0;
-    timInitStruct.TIM_Prescaler = 36;
-    timInitStruct.TIM_Period = 1000;
-    timInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
-    timInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;
+void UART_init() {
+    USART_InitTypeDef usartInitTypeDef;
+    DMA_InitTypeDef dmaInitTypeDef;
+    GPIO_InitTypeDef gpioInitTypeDef;
 
-    TIM_TimeBaseInit(TIM1, &timInitStruct);
-
-    nvicInitTypeDef.NVIC_IRQChannelSubPriority = 6;
-    nvicInitTypeDef.NVIC_IRQChannel = TIM2_IRQn;
-    nvicInitTypeDef.NVIC_IRQChannelPreemptionPriority = 3;
-    nvicInitTypeDef.NVIC_IRQChannelCmd = ENABLE;
-    NVIC_Init(&nvicInitTypeDef);
-
-    timInitStruct.TIM_Prescaler = 100;
-    timInitStruct.TIM_Period = 1000;
-    timInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
-    timInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;
-    TIM_TimeBaseInit(TIM2, &timInitStruct);
-
-    TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
-
-    TIM_Cmd(TIM2, ENABLE);
-
-    nvicInitTypeDef.NVIC_IRQChannelSubPriority = 0;
-    nvicInitTypeDef.NVIC_IRQChannel = TIM4_IRQn;
-    nvicInitTypeDef.NVIC_IRQChannelPreemptionPriority = 2;
-    nvicInitTypeDef.NVIC_IRQChannelCmd = ENABLE;
-    NVIC_Init(&nvicInitTypeDef);
-
-    TIM4->ARR = 1600;
-    TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12, TIM_ICPolarity_Rising, TIM_ICPolarity_Falling);
-
-    TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
-    TIM_Cmd(TIM4, ENABLE);
-
-    TIM_OCInitTypeDef ocInitTypeDef;
-    ocInitTypeDef.TIM_OCIdleState = TIM_OCIdleState_Set;
-    ocInitTypeDef.TIM_OCNIdleState = TIM_OCNIdleState_Reset;
-    ocInitTypeDef.TIM_OCMode = TIM_OCMode_PWM1;
-    ocInitTypeDef.TIM_OCPolarity = TIM_OCPolarity_High;
-    ocInitTypeDef.TIM_OCNPolarity = TIM_OCNPolarity_Low;
-    ocInitTypeDef.TIM_OutputState = TIM_OutputState_Enable;
-    ocInitTypeDef.TIM_OutputNState = TIM_OutputNState_Enable;
-    ocInitTypeDef.TIM_Pulse = 500;
-
-    TIM_OC1Init(TIM1, &ocInitTypeDef);
-    TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Enable);
-
-    ocInitTypeDef.TIM_Pulse = 500;
-    TIM_OC2Init(TIM1, &ocInitTypeDef);
-    TIM_OC2PreloadConfig(TIM1, TIM_OCPreload_Enable);
-
-    ocInitTypeDef.TIM_Pulse = 500;
-    TIM_OC3Init(TIM1, &ocInitTypeDef);
-    TIM_OC3PreloadConfig(TIM1, TIM_OCPreload_Enable);
-
-    TIM_BDTRInitStructure.TIM_OSSRState = TIM_OSSRState_Enable;
-    TIM_BDTRInitStructure.TIM_OSSIState = TIM_OSSIState_Enable;
-    TIM_BDTRInitStructure.TIM_LOCKLevel = TIM_LOCKLevel_1;
-    TIM_BDTRInitStructure.TIM_DeadTime = 0xFF;
-    TIM_BDTRInitStructure.TIM_Break = TIM_Break_Disable;
-    TIM_BDTRInitStructure.TIM_BreakPolarity = TIM_BreakPolarity_Low;
-    TIM_BDTRInitStructure.TIM_AutomaticOutput = TIM_AutomaticOutput_Enable;
-
-    TIM_BDTRConfig(TIM1, &TIM_BDTRInitStructure);
-
-    //TIM_Cmd(TIM1, ENABLE);
-
-    TIM_CtrlPWMOutputs(TIM1, ENABLE);
-
-    // Init UART
     gpioInitTypeDef.GPIO_Mode = GPIO_Mode_AF_PP;
     gpioInitTypeDef.GPIO_Pin = GPIO_Pin_2;
     gpioInitTypeDef.GPIO_Speed = GPIO_Speed_50MHz;
@@ -147,10 +106,87 @@ int main() {
     USART_Init(USART2, &usartInitTypeDef);
     USART_DMACmd(USART2, USART_DMAReq_Tx, ENABLE);
     USART_Cmd(USART2, ENABLE);
+}
 
-    while (1) {
-        DMA1_Channel7->CCR &= ~DMA_CCR7_EN;
-        DMA1_Channel7->CNDTR = 3;
-        DMA1_Channel7->CCR |= DMA_CCR7_EN;
-    }
+void PWM_Bridge_init() {
+    TIM_OCInitTypeDef ocInitTypeDef;
+    TIM_TimeBaseInitTypeDef timInitStruct;
+    TIM_BDTRInitTypeDef TIM_BDTRInitStructure;
+
+    timInitStruct.TIM_RepetitionCounter = 0;
+    timInitStruct.TIM_Prescaler = 36;
+    timInitStruct.TIM_Period = 1000;
+    timInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
+    timInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;
+
+    TIM_TimeBaseInit(TIM1, &timInitStruct);
+
+    ocInitTypeDef.TIM_OCIdleState = TIM_OCIdleState_Set;
+    ocInitTypeDef.TIM_OCNIdleState = TIM_OCNIdleState_Reset;
+    ocInitTypeDef.TIM_OCMode = TIM_OCMode_PWM1;
+    ocInitTypeDef.TIM_OCPolarity = TIM_OCPolarity_High;
+    ocInitTypeDef.TIM_OCNPolarity = TIM_OCNPolarity_Low;
+    ocInitTypeDef.TIM_OutputState = TIM_OutputState_Enable;
+    ocInitTypeDef.TIM_OutputNState = TIM_OutputNState_Enable;
+    ocInitTypeDef.TIM_Pulse = 500;
+
+    TIM_OC1Init(TIM1, &ocInitTypeDef);
+    TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Enable);
+
+    ocInitTypeDef.TIM_Pulse = 500;
+    TIM_OC2Init(TIM1, &ocInitTypeDef);
+    TIM_OC2PreloadConfig(TIM1, TIM_OCPreload_Enable);
+
+    ocInitTypeDef.TIM_Pulse = 500;
+    TIM_OC3Init(TIM1, &ocInitTypeDef);
+    TIM_OC3PreloadConfig(TIM1, TIM_OCPreload_Enable);
+
+    TIM_BDTRInitStructure.TIM_OSSRState = TIM_OSSRState_Enable;
+    TIM_BDTRInitStructure.TIM_OSSIState = TIM_OSSIState_Enable;
+    TIM_BDTRInitStructure.TIM_LOCKLevel = TIM_LOCKLevel_1;
+    TIM_BDTRInitStructure.TIM_DeadTime = 0xFF;
+    TIM_BDTRInitStructure.TIM_Break = TIM_Break_Disable;
+    TIM_BDTRInitStructure.TIM_BreakPolarity = TIM_BreakPolarity_Low;
+    TIM_BDTRInitStructure.TIM_AutomaticOutput = TIM_AutomaticOutput_Enable;
+    TIM_BDTRConfig(TIM1, &TIM_BDTRInitStructure);
+
+    TIM_Cmd(TIM1, ENABLE);
+    TIM_CtrlPWMOutputs(TIM1, ENABLE);
+}
+
+void Encoder_init() {
+    NVIC_InitTypeDef nvicInitTypeDef;
+
+    nvicInitTypeDef.NVIC_IRQChannelSubPriority = 0;
+    nvicInitTypeDef.NVIC_IRQChannel = TIM4_IRQn;
+    nvicInitTypeDef.NVIC_IRQChannelPreemptionPriority = 2;
+    nvicInitTypeDef.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&nvicInitTypeDef);
+
+    TIM4->ARR = 1600;
+    TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12, TIM_ICPolarity_Rising, TIM_ICPolarity_Falling);
+    TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
+
+    TIM_Cmd(TIM4, ENABLE);
+}
+
+void Time_init() {
+    NVIC_InitTypeDef nvicInitTypeDef;
+    TIM_TimeBaseInitTypeDef timInitStruct;
+
+    nvicInitTypeDef.NVIC_IRQChannelSubPriority = 6;
+    nvicInitTypeDef.NVIC_IRQChannel = TIM2_IRQn;
+    nvicInitTypeDef.NVIC_IRQChannelPreemptionPriority = 3;
+    nvicInitTypeDef.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&nvicInitTypeDef);
+
+    timInitStruct.TIM_Prescaler = 100;
+    timInitStruct.TIM_Period = 1000;
+    timInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
+    timInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;
+    TIM_TimeBaseInit(TIM2, &timInitStruct);
+
+    TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
+
+    TIM_Cmd(TIM2, ENABLE);
 }

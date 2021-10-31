@@ -2,13 +2,6 @@
 #include "stm32f10x.h"
 #include "stm32f10x_it.h"
 
-#define ACTIVATE_R1 TIM1->CCER |= (TIM_CCER_CC1E | TIM_CCER_CC1NE)
-#define ACTIVATE_R2 TIM1->CCER |= (TIM_CCER_CC2E | TIM_CCER_CC2NE)
-#define ACTIVATE_R3 TIM1->CCER |= (TIM_CCER_CC3E | TIM_CCER_CC3NE)
-#define DEACTIVATE_R1 TIM1->CCER &= ~(TIM_CCER_CC1E | TIM_CCER_CC1NE)
-#define DEACTIVATE_R2 TIM1->CCER &= ~(TIM_CCER_CC2E | TIM_CCER_CC2NE)
-#define DEACTIVATE_R3 TIM1->CCER &= ~(TIM_CCER_CC3E | TIM_CCER_CC3NE)
-
 /**
   * @brief   This function handles NMI exception.
   * @param  None
@@ -127,77 +120,3 @@ void TIM4_IRQHandler(void) {
         }
     }
 }
-
-/*
-void TIM2_IRQHandler(void) {
-    int16_t alpha_1, alpha_2, alpha_3;
-
-    if (TIM_GetITStatus(TIM2, TIM_IT_Update)) {
-        TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
-
-        GPIOC->ODR ^= 0x2000;
-
-        switch (state) {
-            case 0:
-                state = 1;
-
-                DEACTIVATE_R2;
-                ACTIVATE_R3;
-
-                TIM1->CCR1 = 800;
-                TIM1->CCR3 = 200;
-                break;
-            case 1:
-                state = 2;
-
-                DEACTIVATE_R1;
-                ACTIVATE_R2;
-
-                TIM1->CCR2 = 800;
-                TIM1->CCR3 = 200;
-
-                break;
-            case 2:
-                state = 3;
-
-                ACTIVATE_R1;
-                DEACTIVATE_R3;
-
-                TIM1->CCR1 = 200;
-                TIM1->CCR2 = 800;
-
-                break;
-            case 3:
-                state = 4;
-
-                DEACTIVATE_R2;
-                ACTIVATE_R3;
-
-                TIM1->CCR1 = 200;
-                TIM1->CCR3 = 800;
-
-                break;
-            case 4:
-                state = 5;
-
-                ACTIVATE_R2;
-                DEACTIVATE_R1;
-
-                TIM1->CCR2 = 200;
-                TIM1->CCR3 = 800;
-
-                break;
-            case 5:
-                state = 0;
-
-                ACTIVATE_R1;
-                DEACTIVATE_R3;
-
-                TIM1->CCR1 = 800;
-                TIM1->CCR2 = 200;
-
-                break;
-        }
-    }
-}
-*/
