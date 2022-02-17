@@ -1,4 +1,5 @@
 #include <stm32f10x.h>
+#include <stm32f10x_adc.h>
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_gpio.h>
 #include <stm32f10x_tim.h>
@@ -8,8 +9,13 @@
 
 extern volatile int32_t encoder_num_turn;
 uint8_t data[3] = {'a', 'n', '\n'};
+uint16_t data_adc[12] = {0};
+extern volatile uint32_t time;
+extern volatile double A;
 
 void Gpio_init();
+
+void ADC_init();
 
 void UART_init();
 
@@ -21,13 +27,17 @@ void Time_init();
 
 int main() {
 
+    SystemCoreClockUpdate();
+    SysTick_Config(72000);
+
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1 |
                            RCC_APB2Periph_AFIO |
-                           RCC_APB2Periph_GPIOC |
+                           RCC_APB2Periph_ADC1 |
                            RCC_APB2Periph_GPIOA |
-                           RCC_APB2Periph_GPIOB,
+                           RCC_APB2Periph_GPIOB |
+                           RCC_APB2Periph_GPIOC,
                            ENABLE);
 
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 |
@@ -37,20 +47,34 @@ int main() {
 
     Gpio_init();
 
-    Encoder_init();
+    ADC_init();
 
     PWM_Bridge_init();
+
+    time = 50;
+    while(time);
 
     UART_init();
 
     Time_init();
 
+    Encoder_init();
+
     while (1) {
         DMA1_Channel7->CCR &= ~DMA_CCR7_EN;
         DMA1_Channel7->CNDTR = 3;
         DMA1_Channel7->CCR |= DMA_CCR7_EN;
-        for (uint32_t i = 0; i < 0xFFF; ++i);
+
+        time = 1000;
+        while(time);
+        GPIOC->ODR ^= 0x2000;
+        A += 0.05;
+        if (A > 0.3){
+            A = -.3;
+        }
+
     }
+
 }
 
 void Gpio_init() {
@@ -65,12 +89,65 @@ void Gpio_init() {
     gpioInitTypeDef.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10;
     GPIO_Init(GPIOA, &gpioInitTypeDef);
 
+    gpioInitTypeDef.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    gpioInitTypeDef.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_3 | GPIO_Pin_4;
+    GPIO_Init(GPIOA, &gpioInitTypeDef);
+
     gpioInitTypeDef.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
+    gpioInitTypeDef.GPIO_Mode = GPIO_Mode_AF_PP;
     GPIO_Init(GPIOB, &gpioInitTypeDef);
 
     gpioInitTypeDef.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
     gpioInitTypeDef.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_Init(GPIOB, &gpioInitTypeDef);
+}
+
+void ADC_init() {
+    ADC_InitTypeDef adcInitTypeDef;
+    DMA_InitTypeDef dmaInitTypeDef;
+
+    dmaInitTypeDef.DMA_BufferSize = 12;
+    dmaInitTypeDef.DMA_DIR = DMA_DIR_PeripheralSRC;
+    dmaInitTypeDef.DMA_M2M = DMA_M2M_Disable;
+    dmaInitTypeDef.DMA_MemoryBaseAddr = (uint32_t) data_adc;
+    dmaInitTypeDef.DMA_PeripheralBaseAddr = (uint32_t) & (ADC1->DR);
+    dmaInitTypeDef.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+    dmaInitTypeDef.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    dmaInitTypeDef.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+    dmaInitTypeDef.DMA_Mode = DMA_Mode_Circular;
+    dmaInitTypeDef.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+    dmaInitTypeDef.DMA_Priority = DMA_Priority_Medium;
+    DMA_Init(DMA1_Channel1, &dmaInitTypeDef);
+    DMA_Cmd(DMA1_Channel1, ENABLE);
+
+    adcInitTypeDef.ADC_ContinuousConvMode = ENABLE;
+    adcInitTypeDef.ADC_ScanConvMode = ENABLE;
+    adcInitTypeDef.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
+    adcInitTypeDef.ADC_DataAlign = ADC_DataAlign_Right;
+    adcInitTypeDef.ADC_Mode = ADC_Mode_Independent;
+    adcInitTypeDef.ADC_NbrOfChannel = 4;
+
+    ADC_Init(ADC1, &adcInitTypeDef);
+
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 1, ADC_SampleTime_28Cycles5);
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_1, 2, ADC_SampleTime_28Cycles5);
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_3, 3, ADC_SampleTime_28Cycles5);
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 4, ADC_SampleTime_28Cycles5);
+
+    ADC_DMACmd(ADC1, ENABLE);
+
+    ADC_Cmd(ADC1, ENABLE);
+
+    ADC_ResetCalibration(ADC1);
+
+    while (ADC_GetResetCalibrationStatus(ADC1));
+
+    ADC_StartCalibration(ADC1);
+
+    while (ADC_GetCalibrationStatus(ADC1));
+
+    ADC_SoftwareStartConvCmd(ADC1, ENABLE);
+
 }
 
 void UART_init() {
@@ -114,7 +191,7 @@ void PWM_Bridge_init() {
     TIM_BDTRInitTypeDef TIM_BDTRInitStructure;
 
     timInitStruct.TIM_RepetitionCounter = 0;
-    timInitStruct.TIM_Prescaler = 36;
+    timInitStruct.TIM_Prescaler = 0;
     timInitStruct.TIM_Period = 1000;
     timInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
     timInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;
@@ -128,23 +205,23 @@ void PWM_Bridge_init() {
     ocInitTypeDef.TIM_OCNPolarity = TIM_OCNPolarity_Low;
     ocInitTypeDef.TIM_OutputState = TIM_OutputState_Enable;
     ocInitTypeDef.TIM_OutputNState = TIM_OutputNState_Enable;
-    ocInitTypeDef.TIM_Pulse = 500;
+    ocInitTypeDef.TIM_Pulse = 900;
 
     TIM_OC1Init(TIM1, &ocInitTypeDef);
     TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Enable);
 
-    ocInitTypeDef.TIM_Pulse = 500;
+    ocInitTypeDef.TIM_Pulse = 100;
     TIM_OC2Init(TIM1, &ocInitTypeDef);
     TIM_OC2PreloadConfig(TIM1, TIM_OCPreload_Enable);
 
-    ocInitTypeDef.TIM_Pulse = 500;
+    ocInitTypeDef.TIM_Pulse = 100;
     TIM_OC3Init(TIM1, &ocInitTypeDef);
     TIM_OC3PreloadConfig(TIM1, TIM_OCPreload_Enable);
 
     TIM_BDTRInitStructure.TIM_OSSRState = TIM_OSSRState_Enable;
     TIM_BDTRInitStructure.TIM_OSSIState = TIM_OSSIState_Enable;
     TIM_BDTRInitStructure.TIM_LOCKLevel = TIM_LOCKLevel_1;
-    TIM_BDTRInitStructure.TIM_DeadTime = 0xFF;
+    TIM_BDTRInitStructure.TIM_DeadTime = 0x0A;
     TIM_BDTRInitStructure.TIM_Break = TIM_Break_Disable;
     TIM_BDTRInitStructure.TIM_BreakPolarity = TIM_BreakPolarity_Low;
     TIM_BDTRInitStructure.TIM_AutomaticOutput = TIM_AutomaticOutput_Enable;
@@ -163,9 +240,9 @@ void Encoder_init() {
     nvicInitTypeDef.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&nvicInitTypeDef);
 
-    TIM4->ARR = 1600;
+    TIM4->ARR = 1599;
     TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12, TIM_ICPolarity_Rising, TIM_ICPolarity_Falling);
-    TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
+    //TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
 
     TIM_Cmd(TIM4, ENABLE);
 }
@@ -180,7 +257,7 @@ void Time_init() {
     nvicInitTypeDef.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&nvicInitTypeDef);
 
-    timInitStruct.TIM_Prescaler = 100;
+    timInitStruct.TIM_Prescaler = 71;
     timInitStruct.TIM_Period = 1000;
     timInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
     timInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;

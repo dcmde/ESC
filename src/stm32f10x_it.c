@@ -83,7 +83,12 @@ void PendSV_Handler(void) {
   * @param  None
   * @retval None
   */
+extern volatile uint32_t time;
+volatile uint32_t time = 0;
 void SysTick_Handler(void) {
+    if(time>0){
+        --time;
+    }
 }
 
 /******************************************************************************/
@@ -94,17 +99,20 @@ void SysTick_Handler(void) {
 /******************************************************************************/
 
 volatile uint8_t state = 0;
-volatile float theta = 0;
+extern volatile double A;
+volatile double A = 0;
+volatile float theta = 0, theta_2 = 0, offset = 0;
+extern uint16_t data_adc[12];
 
 void TIM2_IRQHandler(void) {
     if (TIM_GetITStatus(TIM2, TIM_IT_Update)) {
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
-        theta += 0.05;
-        GPIOC->ODR ^= 0x2000;
-        double A = 0.09;
-        TIM1->CCR1 = (uint16_t) 500 * (1 + A * sinf(theta));
-        TIM1->CCR2 = (uint16_t) 500 * (1 + A * sinf(theta + 2 * 3.1416 / 3.0));
-        TIM1->CCR3 = (uint16_t) 500 * (1 + A * sinf(theta - 2 * 3.1416 / 3.0));
+        theta = TIM4->CNT / 800.0 * 3.1416 * 7;
+        offset = ((float) data_adc[3] - 2048) / 2048.0 * 3.1416;
+        //double A = ((float) data_adc[3] - 2048) / 2048.0;
+        TIM1->CCR1 = (uint16_t) 500 * (1 + A * sinf(theta + offset));
+        TIM1->CCR2 = (uint16_t) 500 * (1 + A * sinf(theta + offset - 2 * 3.1416 / 3.0));
+        TIM1->CCR3 = (uint16_t) 500 * (1 + A * sinf(theta + offset + 2 * 3.1416 / 3.0));
     }
 }
 
