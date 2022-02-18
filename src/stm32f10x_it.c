@@ -83,10 +83,10 @@ void PendSV_Handler(void) {
   * @param  None
   * @retval None
   */
-extern volatile uint32_t time;
 volatile uint32_t time = 0;
+
 void SysTick_Handler(void) {
-    if(time>0){
+    if (time > 0) {
         --time;
     }
 }

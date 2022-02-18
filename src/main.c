@@ -26,8 +26,7 @@ void Encoder_init();
 void Time_init();
 
 int main() {
-
-    SystemCoreClockUpdate();
+    // SysTick_Handler every 1 ms
     SysTick_Config(72000);
 
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
@@ -52,7 +51,7 @@ int main() {
     PWM_Bridge_init();
 
     time = 50;
-    while(time);
+    while (time);
 
     UART_init();
 
@@ -61,15 +60,18 @@ int main() {
     Encoder_init();
 
     while (1) {
+        // Activate DMA to transfer DMA values
         DMA1_Channel7->CCR &= ~DMA_CCR7_EN;
         DMA1_Channel7->CNDTR = 3;
         DMA1_Channel7->CCR |= DMA_CCR7_EN;
-
+        // Delay 1 sec
         time = 1000;
-        while(time);
+        while (time);
+        // Toggle PC13
         GPIOC->ODR ^= 0x2000;
+        // Increment command value by 0.05 between -.3 and .3
         A += 0.05;
-        if (A > 0.3){
+        if (A > 0.3) {
             A = -.3;
         }
 
@@ -110,7 +112,7 @@ void ADC_init() {
     dmaInitTypeDef.DMA_DIR = DMA_DIR_PeripheralSRC;
     dmaInitTypeDef.DMA_M2M = DMA_M2M_Disable;
     dmaInitTypeDef.DMA_MemoryBaseAddr = (uint32_t) data_adc;
-    dmaInitTypeDef.DMA_PeripheralBaseAddr = (uint32_t) & (ADC1->DR);
+    dmaInitTypeDef.DMA_PeripheralBaseAddr = (uint32_t) &(ADC1->DR);
     dmaInitTypeDef.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
     dmaInitTypeDef.DMA_MemoryInc = DMA_MemoryInc_Enable;
     dmaInitTypeDef.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
