@@ -7,8 +7,9 @@
 #include <stm32f10x_dma.h>
 #include "misc.h"
 
+#define uart_data_size 5
 extern volatile int32_t encoder_num_turn;
-uint8_t data[3] = {'a', 'n', '\n'};
+volatile uint8_t data_uart[uart_data_size] = {'1', '2', '3', '4', '\n'};
 uint16_t data_adc[12] = {0};
 extern volatile uint32_t time;
 extern volatile double A;
@@ -40,6 +41,7 @@ int main() {
                            ENABLE);
 
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 |
+                           RCC_APB1Periph_TIM3 |
                            RCC_APB1Periph_TIM4 |
                            RCC_APB1Periph_USART2,
                            ENABLE);
@@ -62,18 +64,8 @@ int main() {
     while (1) {
         // Activate DMA to transfer DMA values
         DMA1_Channel7->CCR &= ~DMA_CCR7_EN;
-        DMA1_Channel7->CNDTR = 3;
+        DMA1_Channel7->CNDTR = uart_data_size;
         DMA1_Channel7->CCR |= DMA_CCR7_EN;
-        // Delay 1 sec
-        time = 1000;
-        while (time);
-        // Toggle PC13
-        GPIOC->ODR ^= 0x2000;
-        // Increment command value by 0.05 between -.3 and .3
-        A += 0.05;
-        if (A > 0.3) {
-            A = -.3;
-        }
 
     }
 
@@ -162,10 +154,10 @@ void UART_init() {
     gpioInitTypeDef.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOA, &gpioInitTypeDef);
 
-    dmaInitTypeDef.DMA_BufferSize = 3;
+    dmaInitTypeDef.DMA_BufferSize = uart_data_size;
     dmaInitTypeDef.DMA_DIR = DMA_DIR_PeripheralDST;
     dmaInitTypeDef.DMA_M2M = DMA_M2M_Disable;
-    dmaInitTypeDef.DMA_MemoryBaseAddr = (uint32_t) data;
+    dmaInitTypeDef.DMA_MemoryBaseAddr = (uint32_t) data_uart;
     dmaInitTypeDef.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
     dmaInitTypeDef.DMA_MemoryInc = DMA_MemoryInc_Enable;
     dmaInitTypeDef.DMA_Mode = DMA_Mode_Normal;
@@ -259,13 +251,25 @@ void Time_init() {
     nvicInitTypeDef.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&nvicInitTypeDef);
 
+    nvicInitTypeDef.NVIC_IRQChannelSubPriority = 7;
+    nvicInitTypeDef.NVIC_IRQChannel = TIM3_IRQn;
+    NVIC_Init(&nvicInitTypeDef);
+
     timInitStruct.TIM_Prescaler = 71;
-    timInitStruct.TIM_Period = 1000;
+    timInitStruct.TIM_Period = 200;
     timInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
     timInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;
+
+    // TIM2 freq 5kHz
     TIM_TimeBaseInit(TIM2, &timInitStruct);
-
     TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
-
     TIM_Cmd(TIM2, ENABLE);
+
+    // TIM3 freq 1kHz
+    timInitStruct.TIM_Period = 1000;
+    timInitStruct.TIM_Prescaler = 71;
+    TIM_DeInit(TIM3);
+    TIM_TimeBaseInit(TIM3, &timInitStruct);
+    TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);
+    TIM_Cmd(TIM3, ENABLE);
 }
