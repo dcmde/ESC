@@ -1,4 +1,7 @@
 #include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include "stm32f10x.h"
 #include "stm32f10x_it.h"
 
@@ -104,8 +107,8 @@ volatile double A = 0;
 volatile float theta = 0, offset = 0;
 volatile uint32_t theta_cur_pts = 0, theta_prev_pts = 0;
 extern uint16_t data_adc[12];
-extern volatile uint8_t data_uart[5];
-volatile uint32_t speed = 0;
+extern char uart_array[UART_ARRAY_LEN];
+volatile int32_t speed = 0;
 volatile uint32_t encoder_num_turn = 0;
 
 void TIM2_IRQHandler(void) {
@@ -113,18 +116,10 @@ void TIM2_IRQHandler(void) {
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
         theta = TIM4->CNT / 800.0 * 3.1416 * 7;
         offset = ((float) data_adc[3] - 2048) / 2048.0 * 3.1416;
-        theta_prev_pts = theta_cur_pts;
-        theta_cur_pts = TIM4->CNT;
-        if (TIM4->CR1 & TIM_CR1_DIR) {
-            speed = 1599 - theta_cur_pts + theta_prev_pts + encoder_num_turn * 1599;
-        } else {
-            speed = theta_cur_pts - theta_prev_pts + encoder_num_turn * 1599;
-        }
-        encoder_num_turn = 0;
-        data_uart[0] = speed >> 24 & 0xFF;
-        data_uart[1] = speed >> 16 & 0xFF;
-        data_uart[2] = speed >> 8 & 0xFF;
-        data_uart[3] = speed & 0xFF;
+//        uart_array[0] = speed >> 24 & 0xFF;
+//        uart_array[1] = speed >> 16 & 0xFF;
+//        uart_array[2] = speed >> 8 & 0xFF;
+//        uart_array[3] = speed & 0xFF;
         //double A = ((float) data_adc[3] - 2048) / 2048.0;
         TIM1->CCR1 = (uint16_t) 500 * (1 + A * sinf(theta + offset));
         TIM1->CCR2 = (uint16_t) 500 * (1 + A * sinf(theta + offset - 2 * 3.1416 / 3.0));
@@ -133,30 +128,66 @@ void TIM2_IRQHandler(void) {
 }
 
 volatile uint16_t time_counter = 1;
+volatile int32_t speed_for, speed_rev;
+
 void TIM3_IRQHandler(void) {
     if (TIM_GetITStatus(TIM3, TIM_IT_Update)) {
         TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+
         if (!(--time_counter)) {
             // Toggle PC13
             GPIOC->ODR ^= 0x2000;
-            // Increment command value by 0.05 between -.3 and .3
-            A += 0.05;
-            if (A > 0.3) {
-                A = -.3;
+            if (A > 0) {
+                A = -.2;
+            } else {
+                A = .2;
             }
+
+            // Reset max speeds
+            speed_for = 0;
+            speed_rev = 0;
+            // Set counter to trigger à 1Hz
             time_counter = 1000;
         }
+
+        theta_prev_pts = theta_cur_pts;
+        theta_cur_pts = TIM4->CNT;
+
+        speed = theta_cur_pts - theta_prev_pts;
+
+        if (TIM4->CR1 & TIM_CR1_DIR) {
+            if (theta_prev_pts < theta_cur_pts) {
+                speed = -theta_cur_pts + theta_prev_pts + 1599;
+            } else {
+                speed = theta_cur_pts - theta_prev_pts;
+            }
+        } else {
+            if (theta_prev_pts > theta_cur_pts) {
+                speed = theta_cur_pts - theta_prev_pts + 1599;
+            } else {
+                speed = theta_cur_pts - theta_prev_pts;
+            }
+        }
+
+
+        // Transmit data through UART
+        uint8_t n = sprintf(uart_array, "%i %i\n", (int) speed, (int) theta_cur_pts);
+        encoder_num_turn = 0;
+        DMA1_Channel7->CCR &= ~DMA_CCR7_EN;
+        DMA1_Channel7->CNDTR = n;
+        DMA1_Channel7->CCR |= DMA_CCR7_EN;
     }
 }
 
 void TIM4_IRQHandler(void) {
     if (TIM_GetITStatus(TIM4, TIM_IT_Update)) {
         TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
-        ++encoder_num_turn;
+        // TIM4 IT_Update Disabled
+//        ++encoder_num_turn;
 //        if (TIM4->CR1 & TIM_CR1_DIR) {
-//            ++encoder_num_turn;
+//            encoder_num_turn = 1;
 //        } else {
-//            --encoder_num_turn;
+//            encoder_num_turn = 2;
 //        }
     }
 }

@@ -5,11 +5,11 @@
 #include <stm32f10x_tim.h>
 #include <stm32f10x_usart.h>
 #include <stm32f10x_dma.h>
+#include <stdio.h>
 #include "misc.h"
 
-#define uart_data_size 5
 extern volatile int32_t encoder_num_turn;
-volatile uint8_t data_uart[uart_data_size] = {'1', '2', '3', '4', '\n'};
+char uart_array[UART_ARRAY_LEN] = {0};
 uint16_t data_adc[12] = {0};
 extern volatile uint32_t time;
 extern volatile double A;
@@ -63,9 +63,15 @@ int main() {
 
     while (1) {
         // Activate DMA to transfer DMA values
-        DMA1_Channel7->CCR &= ~DMA_CCR7_EN;
-        DMA1_Channel7->CNDTR = uart_data_size;
-        DMA1_Channel7->CCR |= DMA_CCR7_EN;
+//        DMA1_Channel7->CCR &= ~DMA_CCR7_EN;
+//        DMA1_Channel7->CNDTR = UART_ARRAY_LEN;
+//        DMA1_Channel7->CCR |= DMA_CCR7_EN;
+//        time = 1000;
+//        while (time);
+//        sprintf(uart_array, "Hello wolrd!\n");
+//        DMA1_Channel7->CCR &= ~DMA_CCR7_EN;
+//        DMA1_Channel7->CNDTR = UART_ARRAY_LEN;
+//        DMA1_Channel7->CCR |= DMA_CCR7_EN;
 
     }
 
@@ -154,10 +160,10 @@ void UART_init() {
     gpioInitTypeDef.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOA, &gpioInitTypeDef);
 
-    dmaInitTypeDef.DMA_BufferSize = uart_data_size;
+    dmaInitTypeDef.DMA_BufferSize = UART_ARRAY_LEN;
     dmaInitTypeDef.DMA_DIR = DMA_DIR_PeripheralDST;
     dmaInitTypeDef.DMA_M2M = DMA_M2M_Disable;
-    dmaInitTypeDef.DMA_MemoryBaseAddr = (uint32_t) data_uart;
+    dmaInitTypeDef.DMA_MemoryBaseAddr = (uint32_t) uart_array;
     dmaInitTypeDef.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
     dmaInitTypeDef.DMA_MemoryInc = DMA_MemoryInc_Enable;
     dmaInitTypeDef.DMA_Mode = DMA_Mode_Normal;
@@ -230,13 +236,13 @@ void Encoder_init() {
 
     nvicInitTypeDef.NVIC_IRQChannelSubPriority = 0;
     nvicInitTypeDef.NVIC_IRQChannel = TIM4_IRQn;
-    nvicInitTypeDef.NVIC_IRQChannelPreemptionPriority = 2;
+    nvicInitTypeDef.NVIC_IRQChannelPreemptionPriority = 0;
     nvicInitTypeDef.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&nvicInitTypeDef);
 
     TIM4->ARR = 1599;
     TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12, TIM_ICPolarity_Rising, TIM_ICPolarity_Falling);
-    //TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
+//    TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
 
     TIM_Cmd(TIM4, ENABLE);
 }
