@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include "misc.h"
 
-extern volatile int32_t encoder_num_turn;
+extern volatile float f;
 char uart_array[UART_ARRAY_LEN] = {0};
 uint16_t data_adc[12] = {0};
 extern volatile uint32_t time;
@@ -60,21 +60,17 @@ int main() {
     Time_init();
 
     Encoder_init();
-
+    float f_array[10] = {1, 5, 10, 20, 30, 40, 50, 80, 100, 150};
+    uint8_t i = 0;
     while (1) {
-        // Activate DMA to transfer DMA values
-//        DMA1_Channel7->CCR &= ~DMA_CCR7_EN;
-//        DMA1_Channel7->CNDTR = UART_ARRAY_LEN;
-//        DMA1_Channel7->CCR |= DMA_CCR7_EN;
-//        time = 1000;
-//        while (time);
-//        sprintf(uart_array, "Hello wolrd!\n");
-//        DMA1_Channel7->CCR &= ~DMA_CCR7_EN;
-//        DMA1_Channel7->CNDTR = UART_ARRAY_LEN;
-//        DMA1_Channel7->CCR |= DMA_CCR7_EN;
-
+        // Send new frequency every second
+        time = 1000;
+        while (time);
+        f = f_array[i++];
+        if (i == 10) {
+            i = 0;
+        }
     }
-
 }
 
 void Gpio_init() {
