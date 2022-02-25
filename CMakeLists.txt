@@ -27,6 +27,11 @@ SET(USER_SOURCES
         src/stm32f10x_it.c
         )
 
+SET(USER_SOURCES_TF
+        src/transfer.c
+        src/stm32f10x_it.c
+        )
+
 SET(SPL_SOURCES
         lib/STM32F10x_StdPeriph_Lib_V3.3.0/Libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_rcc.c
         lib/STM32F10x_StdPeriph_Lib_V3.3.0/Libraries/STM32F10x_StdPeriph_Driver/src/stm32f10x_spi.c
@@ -74,21 +79,8 @@ add_library(CMSIS ${CMSIS_SOURCES})
 add_executable(${PROJECT_NAME}.elf ${USER_SOURCES})
 target_link_libraries(${PROJECT_NAME}.elf SPL CMSIS m)
 
+add_executable(transfer_function.elf ${USER_SOURCES_TF})
+target_link_libraries(transfer_function.elf SPL CMSIS m)
+
 # Create build directory.
 file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/bin/build/)
-
-# Generate binary.
-set(HEX_FILE ${PROJECT_SOURCE_DIR}/bin/build/${PROJECT_NAME}.hex)
-set(BIN_FILE ${PROJECT_SOURCE_DIR}/bin/build/${PROJECT_NAME}.bin)
-
-# Custom commands.
-add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD
-        COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${PROJECT_NAME}.elf> ${HEX_FILE}
-        COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${PROJECT_NAME}.elf> ${BIN_FILE}
-        COMMENT "Building ${HEX_FILE} \nBuilding ${BIN_FILE}")
-
-add_custom_target(flash
-        COMMAND ../script/script.zsh
-        COMMENT "Flashing the target processor...")
-
-add_custom_command(TARGET flash POST_BUILD COMMENT "Flashing finished!")

@@ -1,7 +1,4 @@
 #include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include "stm32f10x.h"
 #include "stm32f10x_it.h"
 
@@ -103,10 +100,10 @@ void SysTick_Handler(void) {
 
 volatile double u = 0;
 volatile float theta = 0, offset = 0;
-volatile uint32_t theta_cur_pts = 0, theta_prev_pts = 0;
+volatile uint16_t theta_cur_pts = 0, theta_prev_pts = 0;
 extern uint16_t data_adc[12];
 extern char uart_array[UART_ARRAY_LEN];
-volatile int32_t speed = 0;
+volatile int16_t speed = 0;
 
 void TIM2_IRQHandler(void) {
     if (TIM_GetITStatus(TIM2, TIM_IT_Update)) {
@@ -119,15 +116,27 @@ void TIM2_IRQHandler(void) {
     }
 }
 
-volatile float f = 80;
+volatile float f = 1;
 volatile uint32_t time_1kHz = 0;
+uint8_t f_array[10] = {1, 5, 10, 20, 30, 40, 50, 80, 100, 150};
+uint16_t cpt_1kHz = 0;
+uint8_t index_freq = 0;
 
 void TIM3_IRQHandler(void) {
     if (TIM_GetITStatus(TIM3, TIM_IT_Update)) {
         TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+        GPIOC->BSRR = 0x2000;
+
+        ++time_1kHz;
+        if (cpt_1kHz++ == 1000) {
+            cpt_1kHz = 0;
+            f = f_array[index_freq];
+            if (++index_freq == 10) {
+                index_freq = 0;
+            }
+        }
 
         u = .3 * sin(2 * M_PI * f / 1000.0 * time_1kHz);
-        ++time_1kHz;
 
         theta_prev_pts = theta_cur_pts;
         theta_cur_pts = TIM4->CNT;
@@ -148,12 +157,26 @@ void TIM3_IRQHandler(void) {
             }
         }
 
-        // Transmit data through UART
-        uint8_t n = sprintf(uart_array, "%i %i\n", (int)(u*1e3),(int) theta_cur_pts);
+        // Header
+        uart_array[0] = 0x5A;
+        uart_array[1] = 0xA5;
+        // Time
+        uart_array[2] = (time_1kHz >> 8) & 0xFF;
+        uart_array[3] = time_1kHz & 0xFF;
+        // Freq
+        uart_array[4] = f_array[index_freq];
+        // theta
+        uart_array[5] = (theta_cur_pts >> 8) & 0xFF;
+        uart_array[6] = theta_cur_pts & 0xFF;
+        // speed
+        uart_array[7] = (speed >> 8) & 0xFF;
+        uart_array[8] = speed & 0xFF;
 
         DMA1_Channel7->CCR &= ~DMA_CCR7_EN;
-        DMA1_Channel7->CNDTR = n;
+        DMA1_Channel7->CNDTR = UART_ARRAY_LEN;
         DMA1_Channel7->CCR |= DMA_CCR7_EN;
+
+        GPIOC->BRR = 0x2000;
     }
 }
 
