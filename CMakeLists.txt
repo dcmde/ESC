@@ -25,11 +25,14 @@ include_directories(
 SET(USER_SOURCES
         src/main.c
         src/stm32f10x_it.c
+        src/peripheral_config.c
+        src/global_variables.c
         )
 
 SET(USER_SOURCES_TF
         src/transfer.c
         src/stm32f10x_it.c
+        src/peripheral_config.c
         )
 
 SET(SPL_SOURCES
@@ -79,8 +82,8 @@ add_library(CMSIS ${CMSIS_SOURCES})
 add_executable(${PROJECT_NAME}.elf ${USER_SOURCES})
 target_link_libraries(${PROJECT_NAME}.elf SPL CMSIS m)
 
-add_executable(transfer_function.elf ${USER_SOURCES_TF})
-target_link_libraries(transfer_function.elf SPL CMSIS m)
+#add_executable(transfer_function.elf ${USER_SOURCES_TF})
+#target_link_libraries(transfer_function.elf SPL CMSIS m)
 
 # Create build directory.
 file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/bin/build/)
