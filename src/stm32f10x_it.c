@@ -1,12 +1,12 @@
 #include <math.h>
 #include "stm32f10x.h"
 #include "stm32f10x_it.h"
-#include "global_variables.h"
+#include "global.h"
 
 float theta = 0, f = 1;
 
 uint32_t time3_1kHz = 0, cpt3_1kHz = 0;
-uint16_t theta_cur_pts = 0, theta_prev_pts = 0;
+uint16_t theta_cur_pts = 0;
 
 void SysTick_Handler(void) {
     if (timeS_1kHz > 0) {
@@ -17,64 +17,31 @@ void SysTick_Handler(void) {
 void TIM2_IRQHandler(void) {
     if (TIM_GetITStatus(TIM2, TIM_IT_Update)) {
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
-        theta = (float)(TIM4->CNT + theta_offset) / 800.f * 3.1416f * 7.f;
-        TIM1->CCR1 = (uint16_t) 500 * (1 + u * sinf(theta));
-        TIM1->CCR2 = (uint16_t) 500 * (1 + u * sinf(theta - 2 * 3.1416f / 3.f));
-        TIM1->CCR3 = (uint16_t) 500 * (1 + u * sinf(theta + 2 * 3.1416f / 3.f));
+        theta = (float) (TIM4->CNT + theta_offset) / 800.f * 3.1416f * 7.f;
+        TIM1->CCR1 = (uint16_t) PWM_MAX_AMPLITUDE * (1 + u * sinf(theta));
+        TIM1->CCR2 = (uint16_t) PWM_MAX_AMPLITUDE * (1 + u * sinf(theta - 2 * 3.1416f / 3.f));
+        TIM1->CCR3 = (uint16_t) PWM_MAX_AMPLITUDE * (1 + u * sinf(theta + 2 * 3.1416f / 3.f));
     }
 }
 
-int16_t speed_max_p = 0, speed_max_n = 0;
-
 void TIM3_IRQHandler(void) {
+    static int16_t speed_fil = 0;
     if (TIM_GetITStatus(TIM3, TIM_IT_Update)) {
         TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
         GPIOC->BSRR = 0x2000; // PC13 ON
 
         ++time3_1kHz;
 
-        //u = .3 * sin(2 * M_PI * f / 1000.0 * time3_1kHz);
-
-        theta_prev_pts = theta_cur_pts;
         theta_cur_pts = TIM4->CNT;
 
-        speed_cur = theta_cur_pts - theta_prev_pts;
-
-        if (TIM4->CR1 & TIM_CR1_DIR) {
-            if (theta_prev_pts < theta_cur_pts) {
-                speed_cur = -theta_cur_pts + theta_prev_pts + 1599;
-            } else {
-                speed_cur = theta_cur_pts - theta_prev_pts;
-            }
-        } else {
-            if (theta_prev_pts > theta_cur_pts) {
-                speed_cur = theta_cur_pts - theta_prev_pts + 1599;
-            } else {
-                speed_cur = theta_cur_pts - theta_prev_pts;
-            }
-        }
+        speed_cur = get_speed(theta_cur_pts, TIM4->CR1 & TIM_CR1_DIR);
 
         speed_fil = (speed_cur * 6 + speed_fil * 2) / 8;
 
         // very 500ms
         if (++cpt3_1kHz == 500) {
             cpt3_1kHz = 0;
-            // Change direction
-            if (u > 0) {
-                speed_max_p = speed_fil;
-                u = -.3f;
-            } else {
-                speed_max_n = speed_fil;
-                u = .3f;
-            }
-            int16_t var1 = speed_max_p > 0 ? speed_max_p : -speed_max_p;
-            int16_t var2 = speed_max_n > 0 ? speed_max_n : -speed_max_n;
-
-            if (var2 - var1 > 2) {
-                theta_offset -= 1;
-            } else if (var2 - var1 < 2) {
-                theta_offset += 1;
-            }
+            theta_offset = loop_tim3(speed_fil);
         }
 
         // Header

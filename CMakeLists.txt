@@ -26,7 +26,7 @@ SET(USER_SOURCES
         src/main.c
         src/stm32f10x_it.c
         src/peripheral_config.c
-        src/global_variables.c
+        src/global.c
         )
 
 SET(USER_SOURCES_TF

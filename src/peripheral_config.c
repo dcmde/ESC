@@ -7,9 +7,9 @@
 #include <misc.h>
 
 #include "peripheral_config.h"
-#include "global_variables.h"
+#include "global.h"
 
-void RCC_init(){
+void RCC_init() {
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1 |
@@ -190,7 +190,7 @@ void Encoder_init() {
     nvicInitTypeDef.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&nvicInitTypeDef);
 
-    TIM4->ARR = 1599;
+    TIM4->ARR = ENC_MAX_PTS;
     TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12, TIM_ICPolarity_Rising, TIM_ICPolarity_Falling);
 //    TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
 
