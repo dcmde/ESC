@@ -12,11 +12,12 @@ int16_t foo(int16_t speed_fil) {
     // Change direction
     if (u > 0) {
         speed_max_p = speed_fil;
-        u = -.3f;
+        u = -1.f;
     } else {
         speed_max_n = speed_fil;
-        u = .3f;
+        u = 1.f;
     }
+
     int16_t var1 = speed_max_p > 0 ? speed_max_p : -speed_max_p;
     int16_t var2 = speed_max_n > 0 ? speed_max_n : -speed_max_n;
 
@@ -51,12 +52,18 @@ int main() {
 
     Encoder_init();
 
+    uint8_t f_array[10] = {1, 5, 10, 20, 30, 40, 50, 80, 100, 150};
+    uint8_t i = 0;
+
     while (1) {
         // Send new frequency every second
         timeS_1kHz = 1000;
         while (timeS_1kHz);
-        //u = 0.3;
-        //theta_offset += ;
+        f = f_array[i++];
+        if (i == 10) {
+            i = 0;
+        }
+
     }
 }
 
