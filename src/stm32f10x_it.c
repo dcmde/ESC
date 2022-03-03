@@ -3,60 +3,25 @@
 #include "stm32f10x_it.h"
 #include "global.h"
 
-float theta = 0;
-
-uint32_t time3_1kHz = 0, cpt3_1kHz = 0;
-uint16_t theta_cur_pts = 0;
+float theta = 0.f, u = 0.f;
 uint8_t f_array[10] = {1, 5, 10, 20, 30, 40, 50, 80, 100, 150};
 uint8_t i = 0;
 
+volatile motor_control_struct_t motorControlStruct;
+
 void SysTick_Handler(void) {
-    static int16_t speed_fil = 0;
 
     if (timeS_1kHz > 0) {
         --timeS_1kHz;
     }
     GPIOC->BSRR = 0x2000; // PC13 ON
 
-    ++time3_1kHz;
+    motorControlStruct.theta = TIM4->CNT;
+    //motorControlStruct.time_xxHz = ;
+    motorControlStruct.speed = get_speed(motorControlStruct.theta);
+    motorControlStruct.speed_filt = (speed_cur * 6 + motorControlStruct.speed_filt * 2) / 8;
 
-    theta_cur_pts = TIM4->CNT;
-
-    speed_cur = get_speed(theta_cur_pts);
-
-    speed_fil = (speed_cur * 6 + speed_fil * 2) / 8;
-
-    u = 1.f * sinf(2 * M_PI * f / 1000. * time3_1kHz);
-
-    if (++cpt3_1kHz == 1000) {
-        if (++i == 10) {
-            i = 0;
-        }
-        cpt3_1kHz = 0;
-        f = f_array[i];
-    }
-
-    // Header
-    uart_array[0] = 0x5A;
-    uart_array[1] = 0xA5;
-    // Time
-    uart_array[2] = (time3_1kHz >> 8) & 0xFF;
-    uart_array[3] = time3_1kHz & 0xFF;
-    // theta
-    uart_array[4] = (theta_cur_pts >> 8) & 0xFF;
-    uart_array[5] = theta_cur_pts & 0xFF;
-    // speed_cur
-    uart_array[6] = (speed_cur >> 8) & 0xFF;
-    uart_array[7] = speed_cur & 0xFF;
-    // speed_fil
-    uart_array[8] = (speed_fil >> 8) & 0xFF;
-    uart_array[9] = speed_fil & 0xFF;
-    // freq sin
-    uart_array[10] = f_array[i] & 0xFF;
-
-    DMA1_Channel7->CCR &= ~DMA_CCR7_EN;
-    DMA1_Channel7->CNDTR = UART_ARRAY_LEN;
-    DMA1_Channel7->CCR |= DMA_CCR7_EN;
+    loop_run(&motorControlStruct);
 
     GPIOC->BRR = 0x2000; // PC13 OFF
 }
@@ -67,7 +32,7 @@ void TIM2_IRQHandler(void) {
 
         int16_t TIM_ON_1, TIM_ON_2, TIM_ON_3;
 
-        theta = (float) (TIM4->CNT + theta_offset) / 800.f * 3.1416f * 7.f;
+        theta = (float) (TIM4->CNT + motorControlStruct.theta_offset) / 800.f * 3.1416f * 7.f;
 
         // alpha = Ton/Tperiod
         // alpha = 1/2 + 1/2.(u/Vcc) => u_phase = u/2

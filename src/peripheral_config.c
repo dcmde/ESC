@@ -226,6 +226,6 @@ void Time_init() {
     timInitStruct.TIM_Prescaler = 71;
     TIM_DeInit(TIM3);
     TIM_TimeBaseInit(TIM3, &timInitStruct);
-    TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);
+    //TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);
     TIM_Cmd(TIM3, ENABLE);
 }

@@ -2,17 +2,26 @@
 
 #pragma once
 
-extern volatile float u, f;
 extern uint16_t data_adc[12];
 extern char uart_array[UART_ARRAY_LEN];
 extern volatile uint32_t timeS_1kHz;
 extern volatile int16_t theta_offset;
 extern volatile int16_t speed_cur;
 
-typedef int16_t (*f_ptr_t)(int16_t);
+typedef struct {
+    float u;
+    uint16_t theta;
+    int16_t theta_offset;
+    int16_t speed;
+    int16_t speed_filt;
+    uint32_t time_xxHz;
+} motor_control_struct_t;
+
+typedef void (*f_ptr_t)(volatile motor_control_struct_t *);
 
 int16_t get_speed(uint16_t theta_cur_pts);
 
-void set_loop_tim3(f_ptr_t f_ptr);
+void set_loop(f_ptr_t f_ptr);
 
-int16_t loop_tim3(int16_t speed);
+void loop_run(volatile motor_control_struct_t *motorControlStruct);
+
