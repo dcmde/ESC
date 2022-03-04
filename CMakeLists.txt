@@ -19,14 +19,15 @@ include_directories(
         lib/STM32F10x_StdPeriph_Lib_V3.3.0/Libraries/STM32F10x_StdPeriph_Driver/inc
         lib/STM32F10x_StdPeriph_Lib_V3.3.0/Libraries/CMSIS/CM3/CoreSupport
         lib/STM32F10x_StdPeriph_Lib_V3.3.0/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x
-        )
+)
 
 # Source files directory
 SET(USER_SOURCES
         src/main.c
         src/stm32f10x_it.c
         src/peripheral_config.c
-        src/global.c
+        src/misc_user.c
+        src/motor_param_estimation.c
         )
 
 SET(USER_SOURCES_TF

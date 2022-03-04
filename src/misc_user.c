@@ -1,12 +1,16 @@
 #include <stdint.h>
-#include "global.h"
+#include "misc_user.h"
 
 uint16_t data_adc[12];
 char uart_array[UART_ARRAY_LEN] = {0};
 volatile uint32_t timeS_1kHz = 0;
-volatile int16_t speed_cur = 0;
 
-f_ptr_t f_loop_tim3;
+f_ptr_t f_loop_tim3 = empty_loop;
+
+void empty_loop(volatile motor_control_struct_t *motorControlStruct) {
+    motorControlStruct->u = 0.f;
+    motorControlStruct->theta_offset = 0;
+}
 
 int16_t get_speed(uint16_t theta_cur_pts) {
     static uint16_t theta_prev_pts = 0;

@@ -7,7 +7,7 @@
 #include <misc.h>
 
 #include "peripheral_config.h"
-#include "global.h"
+#include "misc_user.h"
 
 void RCC_init() {
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);

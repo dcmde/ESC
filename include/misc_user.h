@@ -5,8 +5,6 @@
 extern uint16_t data_adc[12];
 extern char uart_array[UART_ARRAY_LEN];
 extern volatile uint32_t timeS_1kHz;
-extern volatile int16_t theta_offset;
-extern volatile int16_t speed_cur;
 
 typedef struct {
     float u;
@@ -25,3 +23,4 @@ void set_loop(f_ptr_t f_ptr);
 
 void loop_run(volatile motor_control_struct_t *motorControlStruct);
 
+void empty_loop(volatile motor_control_struct_t *motorControlStruct);

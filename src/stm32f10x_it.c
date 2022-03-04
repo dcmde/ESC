@@ -1,11 +1,7 @@
 #include <math.h>
 #include "stm32f10x.h"
 #include "stm32f10x_it.h"
-#include "global.h"
-
-float theta = 0.f, u = 0.f;
-uint8_t f_array[10] = {1, 5, 10, 20, 30, 40, 50, 80, 100, 150};
-uint8_t i = 0;
+#include "misc_user.h"
 
 volatile motor_control_struct_t motorControlStruct;
 
@@ -19,7 +15,7 @@ void SysTick_Handler(void) {
     motorControlStruct.theta = TIM4->CNT;
     //motorControlStruct.time_xxHz = ;
     motorControlStruct.speed = get_speed(motorControlStruct.theta);
-    motorControlStruct.speed_filt = (speed_cur * 6 + motorControlStruct.speed_filt * 2) / 8;
+    motorControlStruct.speed_filt = (motorControlStruct.speed * 6 + motorControlStruct.speed_filt * 2) / 8;
 
     loop_run(&motorControlStruct);
 
@@ -32,15 +28,15 @@ void TIM2_IRQHandler(void) {
 
         int16_t TIM_ON_1, TIM_ON_2, TIM_ON_3;
 
-        theta = (float) (TIM4->CNT + motorControlStruct.theta_offset) / 800.f * 3.1416f * 7.f;
-
+        float theta_elec = (float) (TIM4->CNT + motorControlStruct.theta_offset) / 800.f * 3.1416f * 7.f;
+        float u = motorControlStruct.u;
         // alpha = Ton/Tperiod
         // alpha = 1/2 + 1/2.(u/Vcc) => u_phase = u/2
         // here we have
         // alpha = 1/2 + (u/Vcc) => u_phase = u
-        TIM_ON_1 = (int16_t) TIM_PERIOD * (.5f + u * sinf(theta) / 10.f);
-        TIM_ON_2 = (int16_t) TIM_PERIOD * (.5f + u * sinf(theta - 2 * 3.1416f / 3.f) / 10.f);
-        TIM_ON_3 = (int16_t) TIM_PERIOD * (.5f + u * sinf(theta + 2 * 3.1416f / 3.f) / 10.f);
+        TIM_ON_1 = (int16_t) TIM_PERIOD * (.5f + u * sinf(theta_elec) / 10.f);
+        TIM_ON_2 = (int16_t) TIM_PERIOD * (.5f + u * sinf(theta_elec - 2 * 3.1416f / 3.f) / 10.f);
+        TIM_ON_3 = (int16_t) TIM_PERIOD * (.5f + u * sinf(theta_elec + 2 * 3.1416f / 3.f) / 10.f);
 
         TIM_ON_1 = TIM_ON_1 < 0 ? 0 : TIM_ON_1;
         TIM_ON_2 = TIM_ON_2 < 0 ? 0 : TIM_ON_2;
