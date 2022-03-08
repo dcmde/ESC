@@ -38,6 +38,7 @@ void offset_tuning(volatile motor_control_struct_t *motorControlStruct) {
 }
 
 uint8_t f_array[10] = {1, 5, 10, 20, 30, 40, 50, 80, 100, 150};
+uint8_t t_array[10] = {10000, 5000, 2000, 1000, 1000, 1000, 1000, 1000, 1000, 1000};
 
 void transfer_function(volatile motor_control_struct_t *motorControlStruct) {
     static uint32_t time_tf_1kHz = 0, cpt_1kHz = 0;
@@ -51,7 +52,7 @@ void transfer_function(volatile motor_control_struct_t *motorControlStruct) {
 
     motorControlStruct->u = 1.f * sinf(2 * M_PI * f / 1000. * time_tf_1kHz);
 
-    if (++cpt_1kHz == 1000) {
+    if (++cpt_1kHz == t_array[i]) {
         if (++i == 10) {
             i = 0;
         }
