@@ -2,6 +2,8 @@
 #include "stm32f10x.h"
 #include "stm32f10x_it.h"
 #include "misc_user.h"
+#include <stdint.h>
+#include <stdio.h>
 
 volatile motor_control_struct_t motorControlStruct;
 
@@ -27,16 +29,23 @@ void TIM2_IRQHandler(void) {
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
 
         int16_t TIM_ON_1, TIM_ON_2, TIM_ON_3;
+        int s1, s2, s3, c;
 
-        float theta_elec = (float) (TIM4->CNT + motorControlStruct.theta_offset) / 800.f * 3.1416f * 7.f;
+        float theta_elec;
         float u = motorControlStruct.u;
+
+        theta_elec = (float) (TIM4->CNT + motorControlStruct.theta_offset) * 7.f / ENC_MAX_PTS * 2 * M_PI;
+        cordic((int) (theta_elec * MUL), &s1, &c);
+        cordic((int) ((theta_elec - 2 * 3.1416f / 3.f) * MUL), &s2, &c);
+        cordic((int) ((theta_elec + 2 * 3.1416f / 3.f) * MUL), &s3, &c);
+
         // alpha = Ton/Tperiod
         // alpha = 1/2 + 1/2.(u/Vcc) => u_phase = u/2
         // here we have
         // alpha = 1/2 + (u/Vcc) => u_phase = u
-        TIM_ON_1 = (int16_t) TIM_PERIOD * (.5f + u * sinf(theta_elec) / 10.f);
-        TIM_ON_2 = (int16_t) TIM_PERIOD * (.5f + u * sinf(theta_elec - 2 * 3.1416f / 3.f) / 10.f);
-        TIM_ON_3 = (int16_t) TIM_PERIOD * (.5f + u * sinf(theta_elec + 2 * 3.1416f / 3.f) / 10.f);
+        TIM_ON_1 = (int16_t) TIM_PERIOD * (.5f + u * (float) s1 / MUL / 10.f);
+        TIM_ON_2 = (int16_t) TIM_PERIOD * (.5f + u * (float) s2 / MUL / 10.f);
+        TIM_ON_3 = (int16_t) TIM_PERIOD * (.5f + u * (float) s3 / MUL / 10.f);
 
         TIM_ON_1 = TIM_ON_1 < 0 ? 0 : TIM_ON_1;
         TIM_ON_2 = TIM_ON_2 < 0 ? 0 : TIM_ON_2;

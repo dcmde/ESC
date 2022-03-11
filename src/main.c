@@ -21,7 +21,7 @@ int main() {
 
     PWM_Bridge_init();
 
-    timeS_1kHz = 60;
+    timeS_1kHz = 100;
     while (timeS_1kHz);
 
     UART_init();
@@ -30,9 +30,9 @@ int main() {
 
     Encoder_init();
 
-    set_loop(offset_tuning);
-    timeS_1kHz = 10000;
-    while (timeS_1kHz);
+//    set_loop(offset_tuning);
+//    timeS_1kHz = 1;
+//    while (timeS_1kHz);
 
     set_loop(transfer_function);
 

@@ -1,6 +1,8 @@
 #include "stm32f10x_conf.h"
 
 #pragma once
+#define half_pi 0x0006487E
+#define MUL 262144.000000f
 
 extern uint16_t data_adc[12];
 extern char uart_array[UART_ARRAY_LEN];
@@ -16,6 +18,10 @@ typedef struct {
 } motor_control_struct_t;
 
 typedef void (*f_ptr_t)(volatile motor_control_struct_t *);
+
+void cordic(int theta, int *s, int *c);
+
+float sin_time_1kHz(int Te);
 
 int16_t get_speed(uint16_t theta_cur_pts);
 
